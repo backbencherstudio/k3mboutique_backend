@@ -6,6 +6,7 @@ const bodyParser = require("body-parser");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const route = require("./modules/users/users.routes");
+const adminroute = require("./modules/admin/admin.route");
 const User = require("./modules/users/users.models");
 
 const nodemailer = require("nodemailer");
@@ -52,7 +53,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 app.use(cookieParser());
-// app.use(express.json());
+app.use(express.json());
 
 
 
@@ -88,6 +89,7 @@ app.use((req, res, next) => {
 });
 
 app.use("/api/users", route);
+app.use("/api/admin", adminroute);
 
 
 app.use("/api/support", support);
