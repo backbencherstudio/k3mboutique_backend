@@ -5,7 +5,7 @@ const { sign, verify } = require("jsonwebtoken");
 const User = require("./users.models");
 const Otp = require("./otp.model");
 require("dotenv").config();
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 
 const fs = require("fs");
 const path = require("path");
@@ -466,6 +466,7 @@ const editUserProfile = async (req, res) => {
     }
 
     const { password, ...updateData } = req.body;
+    console.log(req.body)
 
     // Handle avatar if uploaded
     if (req.files && req.files.avatar) {
