@@ -111,6 +111,20 @@ exports.getPlayer = async(req, res) =>{
   }
 }
 
+exports.getAllPlayer = async(req, res) =>{
+  try{
+    const players = await Players.find()
+    return res.status(200).json({players})
+  }
+  catch(error){
+    console.error(error);
+    res.status(500).json({
+      message: "Error updating players",
+      error: error.message,
+    });
+  }
+}
+
 
 exports.createMatch = async (req, res) => {
    try {
@@ -140,6 +154,45 @@ exports.createMatch = async (req, res) => {
     });
   }
 }
+
+
+
+exports.updateMatchPlayers = async (req, res) => {
+  try {
+    const { matchId } = req.params; 
+    const { team, players } = req.body; 
+
+    
+    if (!["teamA", "teamB"].includes(team)) {
+      return res.status(400).json({
+        message: "Invalid team name. It must be 'teamA' or 'teamB'.",
+      });
+    }
+
+    
+    const match = await Match.findById(matchId);
+
+    if (!match) {
+      return res.status(404).json({ message: "Match not found" });
+    }
+
+    
+    match[team].players = players;
+
+    await match.save();
+
+    res.status(200).json({
+      message: `Players added to ${team} successfully`,
+      match,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error updating players",
+      error: error.message,
+    });
+  }
+};
 
 
 
