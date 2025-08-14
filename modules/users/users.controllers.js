@@ -3,17 +3,15 @@ const { isEmail } = require("validator");
 const bcrypt = require("bcryptjs");
 const { sign, verify } = require("jsonwebtoken");
 const User = require("./users.models");
+const Players = require("../players/players.model");
 const Otp = require("./otp.model");
 require("dotenv").config();
-
 
 const fs = require("fs");
 const path = require("path");
 const { fileURLToPath } = require("url");
 const crypto = require("crypto");
 const session = require("express-session");
-
-
 
 const {
   generateOTP,
@@ -59,9 +57,6 @@ const setTokenCookie = (res, token) => {
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 };
-
-
-
 
 const registerUser = async (req, res) => {
   try {
@@ -111,7 +106,39 @@ const registerUser = async (req, res) => {
         .status(400)
         .json({ message: "Email is already registered. Please log in." });
     }
+
     if (!user) {
+
+
+      if (role === "parent") {
+        const parentaccess = await Players.findOne({
+          parent_email: email,
+        });
+
+        console.log(parentaccess);
+        console.log(email);
+        if (!parentaccess) {
+          return res
+            .status(403)
+            .json({ message: "You do not have permission to register." });
+        }
+
+        const newUser = new User({
+          name,
+          email,
+          password: hashedPassword,
+          role,
+          country: null,
+          phone,
+        });
+
+        await newUser.save();
+
+         return res.status(200).json({
+        message: "Successfully Account Regitered",
+      });
+      }
+
       let country = "Unknown";
       try {
         const response = await fetch("http://get.geojs.io/v1/ip/geo.json");
@@ -148,10 +175,9 @@ const registerUser = async (req, res) => {
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: error });
   }
 };
-
 
 const authenticateUser = async (req, res) => {
   try {
@@ -168,7 +194,6 @@ const authenticateUser = async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: "User not found!" });
     }
-    
 
     // if (user.isVerified === false) {
     //   return res
@@ -212,7 +237,6 @@ const authenticateUser = async (req, res) => {
   }
 };
 
-
 const checkAuthStatus = async (req, res) => {
   const JWT_SECRET = process.env.WEBTOKEN_SECRET_KEY;
 
@@ -239,7 +263,7 @@ const checkAuthStatus = async (req, res) => {
       const userId = decoded?.userId;
 
       const userInfo = await User.findById(userId);
-      
+
       const userResponse = userInfo?.toObject();
       delete userResponse?.password;
       delete userResponse?.newpassword;
@@ -251,8 +275,7 @@ const checkAuthStatus = async (req, res) => {
       }
 
       return res.status(200).json({ authenticated: true, user: userResponse });
-      });
-
+    });
   } catch (error) {
     console.error("Error in checkAuthStatus:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -292,8 +315,6 @@ const forgotPasswordOTPsend = async (req, res) => {
   }
 };
 
-
-
 const resetPasssword = async (req, res) => {
   try {
     const { email, otp, password } = req.body;
@@ -326,10 +347,6 @@ const resetPasssword = async (req, res) => {
   }
 };
 
-
-
-
-
 const hitToVarify = async (req, res) => {
   const userId = req.userId;
 
@@ -346,8 +363,6 @@ const hitToVarify = async (req, res) => {
 
   return res.status(201).json({ token, user: user, success: true });
 };
-
-
 
 const verifyEmail = async (req, res) => {
   try {
@@ -366,11 +381,6 @@ const verifyEmail = async (req, res) => {
     res.status(400).json({ message: "Invalid or expired token" });
   }
 };
-
-
-
-
-
 
 const google = async (req, res, next) => {
   const { name, email, role } = req.body;
@@ -466,7 +476,7 @@ const editUserProfile = async (req, res) => {
     }
 
     const { password, ...updateData } = req.body;
-    console.log(req.body)
+    console.log(req.body);
 
     // Handle avatar if uploaded
     if (req.files && req.files.avatar) {
@@ -501,8 +511,6 @@ const editUserProfile = async (req, res) => {
     return res.status(500).json({ message: "Internal server error", error });
   }
 };
-
-
 
 const matchForgotPasswordOTP = async (req, res) => {
   try {
@@ -600,10 +608,6 @@ const varifyEmailWithOTP = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
-
-
-
 
 const logout = (req, res) => {
   try {

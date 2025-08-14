@@ -17,10 +17,13 @@ const MatchSchema = new Schema(
           message: "Team A cannot have more than 15 players.",
         },
       },
+      goalScorers: [{ type: Schema.Types.ObjectId, ref: "Players" }],
+      goalAssists: [{ type: Schema.Types.ObjectId, ref: "Players" }], 
+      totalGoals: { type: Number, default: 0 },
     },
     teamB: {
       name: { type: String, required: true },
-   
+      totalGoals: { type: Number, default: 0 },
     },
     date: { type: Date, required: true },
     start_time: { type: String, required: true },
