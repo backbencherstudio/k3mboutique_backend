@@ -25,7 +25,7 @@ const UserSchema = new Schema(
     resetPasswordExpires: { type: Date, default: null },
     role: {
       type: String,
-      enum: ["admin", "user", "worker"],
+      enum: ["admin", "parent", "worker"],
       default: "admin",
     },
     rating: { type: Number, default: 0 },

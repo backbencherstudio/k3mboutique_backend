@@ -6,8 +6,6 @@ const PlayersSchema = new Schema(
     name: { type: String, required: [true, "name is required"] },
     parent_email: {
       type: String,
-     
-      
     },
     username : {
       type: String,
