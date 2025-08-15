@@ -4,8 +4,6 @@ const Match = require("../match/match.model");
 const fs = require("fs");
 const path = require("path");
 
-
-
 exports.createNewPlayer = async (req, res) => {
   try {
     const {
@@ -60,7 +58,6 @@ exports.createNewPlayer = async (req, res) => {
   }
 };
 
-
 exports.updatePlayer = async (req, res) => {
   try {
     const player = await Players.findById(req.params.playerId);
@@ -68,18 +65,16 @@ exports.updatePlayer = async (req, res) => {
       return res.status(404).json({ message: "Player not found" });
     }
 
-   
     const { username, parent_email, jersey_number, ...updateData } = req.body;
 
     if (jersey_number) {
       updateData.jersey_number = Number(jersey_number);
     }
 
-  
     if (req.files && req.files.avatar) {
       const avatarFile = req.files.avatar[0];
       if (player.avatar) {
-        deleteImage(player.avatar); 
+        deleteImage(player.avatar);
       }
       updateData.avatar = avatarFile.filename;
     }
@@ -97,43 +92,48 @@ exports.updatePlayer = async (req, res) => {
   }
 };
 
-exports.getPlayer = async(req, res) =>{
-  try{
-    const player = await Players.findById(req.params.playrId)
+exports.getPlayer = async (req, res) => {
+  try {
+    const player = await Players.findById(req.params.playrId);
 
-  if(!player){
-    return res.status(404).json({ message: "Player not found" });
-  }
-  return res.status(200).json({player})
-  }
-  catch(error){
+    if (!player) {
+      return res.status(404).json({ message: "Player not found" });
+    }
+    return res.status(200).json({ player });
+  } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
+};
 
-exports.getAllPlayer = async(req, res) =>{
-  try{
-    const players = await Players.find()
-    return res.status(200).json({players})
-  }
-  catch(error){
+exports.getAllPlayer = async (req, res) => {
+  try {
+    const players = await Players.find();
+    return res.status(200).json({ players });
+  } catch (error) {
     console.error(error);
     res.status(500).json({
       message: "Error updating players",
       error: error.message,
     });
   }
-}
-
+};
 
 exports.createMatch = async (req, res) => {
-   try {
-    const { teamAName, teamBName, date, start_time, end_time, stadium, manager } = req.body;
+  try {
+    const {
+      teamAName,
+      teamBName,
+      date,
+      start_time,
+      end_time,
+      stadium,
+      manager,
+    } = req.body;
 
     // Create the match without players
     const match = new Match({
       teamA: { name: teamAName, players: [] },
-      teamB: { name: teamBName, players: [] }, 
+      teamB: { name: teamBName, players: [] },
       date,
       start_time,
       end_time,
@@ -153,50 +153,64 @@ exports.createMatch = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
 
-
-
-exports.updateMatchPlayers = async (req, res) => {
+exports.addPlayersToTeam = async (req, res) => {
   try {
-    const { matchId } = req.params; 
-    const { team, players } = req.body; 
+    const { teamName, players, isStartingArray } = req.body;
 
-    
-    if (!["teamA", "teamB"].includes(team)) {
-      return res.status(400).json({
-        message: "Invalid team name. It must be 'teamA' or 'teamB'.",
-      });
+    if (teamName !== "teamA" && teamName !== "teamB") {
+      return res.status(400).json({ message: "Invalid team name" });
     }
 
-    
-    const match = await Match.findById(matchId);
+    if (players.length > 15) {
+      return res
+        .status(400)
+        .json({ message: "You can not add more than 15 players" });
+    }
+
+    const uniquePlayers = [...new Set(players)];
+    if (uniquePlayers.length !== players.length) {
+      return res
+        .status(400)
+        .json({ message: "Player IDs must be unique in the request" });
+    }
+
+    const match = await Match.findById(req.params.matchId);
 
     if (!match) {
       return res.status(404).json({ message: "Match not found" });
     }
 
-    
-    match[team].players = players;
+    const existingPlayers = match[teamName].players.map((player) =>
+      player.player.toString()
+    );
 
-    await match.save();
+    const newPlayers = players.filter(
+      (playerId) => !existingPlayers.includes(playerId)
+    );
+    const newIsStarting = newPlayers.map(
+      (playerId, index) => isStartingArray[players.indexOf(playerId)]
+    );
 
-    res.status(200).json({
-      message: `Players added to ${team} successfully`,
-      match,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Error updating players",
-      error: error.message,
-    });
+    if (newPlayers.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "All players are already in the team" });
+    }
+
+    const playersToAdd = newPlayers.map((playerId, index) => ({
+      player: playerId,
+      isStarting: newIsStarting[index],
+    }));
+
+    match[teamName].players.push(...playersToAdd);
+
+    return res.json(match);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
-
-
-
-
 
 function deleteImage(imagePath) {
   const uploadsFolder = path.resolve(__dirname, "..", "..", "uploads/images");

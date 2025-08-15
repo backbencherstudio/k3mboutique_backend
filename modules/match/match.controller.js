@@ -15,38 +15,29 @@ exports.getOnematch = async (req, res) => {
 exports.updatedMatch = async (req, res) => {
   try {
     const { goalScorersA, goalAssistsA } = req.body;
-
-    
     const match = await Match.findById(req.params.id);
-
     if (!match) {
       return res.status(404).json({ message: "Match not found" });
     }
-
-
     if (goalScorersA && goalScorersA.length > 0) {
-      match.teamA.goalScorers.push(...goalScorersA);
+      
+      const validGoalScorers = goalScorersA.filter(playerId =>
+        match.teamA.players.some(p => p.player.toString() === playerId)
+      );
+      match.teamA.goalScorers.push(...validGoalScorers);
     }
     if (goalAssistsA && goalAssistsA.length > 0) {
-      match.teamA.goalAssists.push(...goalAssistsA);
+      
+      const validGoalAssists = goalAssistsA.filter(playerId =>
+        match.teamA.players.some(p => p.player.toString() === playerId)
+      ); 
+      match.teamA.goalAssists.push(...validGoalAssists);
     }
     match.teamA.totalGoals = match.teamA.goalScorers.length;
-
-   
-    // if (goalScorersB && goalScorersB.length > 0) {
-    //   match.teamB.goalScorers.push(...goalScorersB);
-    // }
-    // if (goalAssistsB && goalAssistsB.length > 0) {
-    //   match.teamB.goalAssists.push(...goalAssistsB);
-    // }
-    // match.teamB.totalGoals = match.teamB.goalScorers.length;
-
-  
     await match.save();
-
-    // Send the updated match as the response
-    res.json(match);
+    return res.json(match);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err });
   }
 };
+
