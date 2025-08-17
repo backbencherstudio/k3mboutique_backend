@@ -20,17 +20,15 @@ exports.updatedMatch = async (req, res) => {
       return res.status(404).json({ message: "Match not found" });
     }
     if (goalScorersA && goalScorersA.length > 0) {
-      
-      const validGoalScorers = goalScorersA.filter(playerId =>
-        match.teamA.players.some(p => p.player.toString() === playerId)
+      const validGoalScorers = goalScorersA.filter((playerId) =>
+        match.teamA.players.some((p) => p.player.toString() === playerId)
       );
       match.teamA.goalScorers.push(...validGoalScorers);
     }
     if (goalAssistsA && goalAssistsA.length > 0) {
-      
-      const validGoalAssists = goalAssistsA.filter(playerId =>
-        match.teamA.players.some(p => p.player.toString() === playerId)
-      ); 
+      const validGoalAssists = goalAssistsA.filter((playerId) =>
+        match.teamA.players.some((p) => p.player.toString() === playerId)
+      );
       match.teamA.goalAssists.push(...validGoalAssists);
     }
     match.teamA.totalGoals = match.teamA.goalScorers.length;
@@ -41,3 +39,50 @@ exports.updatedMatch = async (req, res) => {
   }
 };
 
+exports.getAllMatch = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const allMatches = await Match.find()
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalMatches = await Match.countDocuments();
+
+    const totalPages = Math.ceil(totalMatches / limit);
+
+    res.status(200).json({
+      matches: allMatches,
+      currentPage: page,
+      totalPages: totalPages,
+      totalMatches: totalMatches,
+    });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Error fetching matches", error: err.message });
+  }
+};
+
+
+exports.getParentAllMatches = async (req, res) => {
+  const parentId = req.params.parentId;
+
+  try {
+    // Find matches where any player has the given parentId
+    const matches = await Match.find({
+      $or: [
+        { "teamA.players.paerent": parentId },
+        { "teamB.players.paerent": parentId }
+      ]
+    });
+
+    // Return the matches
+    res.status(200).json(matches);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching matches", error });
+  }
+};

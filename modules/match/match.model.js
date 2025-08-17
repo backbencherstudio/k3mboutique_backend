@@ -15,6 +15,8 @@ const MatchSchema = new Schema(
           {
             player: { type: Schema.Types.ObjectId, ref: "Players", required: true },
             isStarting: { type: Boolean, required: true }, 
+            paerent: { type: Schema.Types.ObjectId, ref: "User", required: true }, 
+            
           },
         ],
         validate: {

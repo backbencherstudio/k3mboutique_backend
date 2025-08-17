@@ -107,7 +107,9 @@ exports.getPlayer = async (req, res) => {
 
 exports.getAllPlayer = async (req, res) => {
   try {
-    const players = await Players.find();
+    const players = await Players.find({
+      active: true
+    });
     return res.status(200).json({ players });
   } catch (error) {
     console.error(error);
@@ -155,9 +157,86 @@ exports.createMatch = async (req, res) => {
   }
 };
 
+// exports.addPlayersToTeam = async (req, res) => {
+//   try {
+//     const { teamName, players, isStartingArray } = req.body;
+
+//     if (teamName !== "teamA" && teamName !== "teamB") {
+//       return res.status(400).json({ message: "Invalid team name" });
+//     }
+
+//     if (players.length > 15) {
+//       return res
+//         .status(400)
+//         .json({ message: "You can not add more than 15 players" });
+//     }
+
+//     const uniquePlayers = [...new Set(players)];
+//     if (uniquePlayers.length !== players.length) {
+//       return res
+//         .status(400)
+//         .json({ message: "Player IDs must be unique in the request" });
+//     }
+
+
+//       // Check if all players exist in the Player model
+//     const invalidPlayers = [];
+//     for (let playerId of players) {
+//       const playerExists = await Players.exists({ _id: playerId });
+//       if (!playerExists) {
+//         invalidPlayers.push(playerId);
+//       }
+//     }
+
+//     if (invalidPlayers.length > 0) {
+//       return res
+//         .status(400)
+//         .json({ message: `Invalid player IDs: ${invalidPlayers.join(", ")}` });
+//     }
+
+//     const match = await Match.findById(req.params.matchId);
+
+//     if (!match) {
+//       return res.status(404).json({ message: "Match not found" });
+//     }
+
+//     const existingPlayers = match[teamName].players.map((player) =>
+//       player.player.toString()
+//     );
+
+//     const newPlayers = players.filter(
+//       (playerId) => !existingPlayers.includes(playerId)
+//     );
+//     const newIsStarting = newPlayers.map(
+//       (playerId, index) => isStartingArray[players.indexOf(playerId)]
+//     );
+
+//     if (newPlayers.length === 0) {
+//       return res
+//         .status(400)
+//         .json({ message: "All players are already in the team" });
+//     }
+
+//     const playersToAdd = newPlayers.map((playerId, index) => ({
+//       player: playerId,
+//       isStarting: newIsStarting[index],
+//     }));
+
+//     match[teamName].players.push(...playersToAdd);
+//     await match.save()
+
+//     return res.json(match);
+//   } catch (err) {
+//     return res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+
+
 exports.addPlayersToTeam = async (req, res) => {
   try {
-    const { teamName, players, isStartingArray } = req.body;
+    const { teamName, players, isStartingArray, parentsAray} = req.body;
 
     if (teamName !== "teamA" && teamName !== "teamB") {
       return res.status(400).json({ message: "Invalid team name" });
@@ -166,7 +245,7 @@ exports.addPlayersToTeam = async (req, res) => {
     if (players.length > 15) {
       return res
         .status(400)
-        .json({ message: "You can not add more than 15 players" });
+        .json({ message: "You cannot add more than 15 players" });
     }
 
     const uniquePlayers = [...new Set(players)];
@@ -174,6 +253,21 @@ exports.addPlayersToTeam = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Player IDs must be unique in the request" });
+    }
+
+    // Check if all players exist in the Player model
+    const invalidPlayers = [];
+    for (let playerId of players) {
+      const playerExists = await Players.exists({ _id: playerId });
+      if (!playerExists) {
+        invalidPlayers.push(playerId);
+      }
+    }
+
+    if (invalidPlayers.length > 0) {
+      return res
+        .status(400)
+        .json({ message: `Invalid player IDs: ${invalidPlayers.join(", ")}` });
     }
 
     const match = await Match.findById(req.params.matchId);
@@ -186,31 +280,47 @@ exports.addPlayersToTeam = async (req, res) => {
       player.player.toString()
     );
 
+    // Filter out the players that are already in the team
     const newPlayers = players.filter(
       (playerId) => !existingPlayers.includes(playerId)
     );
+
     const newIsStarting = newPlayers.map(
       (playerId, index) => isStartingArray[players.indexOf(playerId)]
     );
 
-    if (newPlayers.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "All players are already in the team" });
+    // Update the isStarting status for existing players
+    for (let i = 0; i < match[teamName].players.length; i++) {
+      const existingPlayer = match[teamName].players[i];
+      const playerIndex = players.indexOf(existingPlayer.player.toString());
+      if (playerIndex !== -1) {
+        // If player exists, we toggle isStarting status
+        existingPlayer.isStarting = isStartingArray[playerIndex]; // Set to the new isStarting value
+        match[teamName].players[i] = existingPlayer; // Update the player in the team
+      }
     }
 
-    const playersToAdd = newPlayers.map((playerId, index) => ({
-      player: playerId,
-      isStarting: newIsStarting[index],
-    }));
+    // Now add new players to the team
+    if (newPlayers.length > 0) {
+      const playersToAdd = newPlayers.map((playerId, index) => ({
+        player: playerId,
+        isStarting: newIsStarting[index],
+        paerent: parentsAray[index]
+      }));
 
-    match[teamName].players.push(...playersToAdd);
+      match[teamName].players.push(...playersToAdd);
+    }
+
+    // Save the updated match
+    await match.save();
 
     return res.json(match);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
+
+
 
 function deleteImage(imagePath) {
   const uploadsFolder = path.resolve(__dirname, "..", "..", "uploads/images");
