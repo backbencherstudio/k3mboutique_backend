@@ -7,6 +7,7 @@ const PlayersSchema = new Schema(
     parent_email: {
       type: String,
     },
+    parent_id : {type: Schema.Types.ObjectId, ref: "User"},
     username : {
       type: String,
       required: [true, "username is required and unique"],

@@ -108,15 +108,13 @@ const registerUser = async (req, res) => {
     }
 
     if (!user) {
-
-
       if (role === "parent") {
         const parentaccess = await Players.findOne({
           parent_email: email,
         });
 
-        console.log(parentaccess);
-        console.log(email);
+        // console.log(parentaccess);
+        // console.log(email);
         if (!parentaccess) {
           return res
             .status(403)
@@ -133,10 +131,21 @@ const registerUser = async (req, res) => {
         });
 
         await newUser.save();
+        const players = await Players.find({
+          parent_email: email,
+        });
 
-         return res.status(200).json({
-        message: "Successfully Account Regitered",
-      });
+       
+        console.log(players);
+        for (const player of players) {
+          player.parent_id = newUser.id;
+          player.active = true;
+          await player.save();
+        }
+
+        return res.status(200).json({
+          message: "Successfully Account Regitered",
+        });
       }
 
       let country = "Unknown";
