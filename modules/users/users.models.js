@@ -9,10 +9,11 @@ const UserSchema = new Schema(
       required: [true, "email is required and unique"],
       unique: true,
     },
-    first_name: {type: String},
-    last_name: {type: String},
-    birth_date: {type: Date},
-    phone : { type: String},
+    first_name: { type: String },
+    last_name: { type: String },
+    birth_date: { type: Date },
+    phone: { type: String },
+    childlist: { type: [String], default: [] },
     address: { type: String, default: null },
     Apparment: { type: String, default: null },
     city: { type: String, default: null },
@@ -39,9 +40,6 @@ const UserSchema = new Schema(
     country: { type: String },
     blacklist: { type: Boolean, default: false },
     active: { type: Boolean, default: false },
-
-
-    
   },
   { timestamps: true }
 );

@@ -8,6 +8,7 @@ const cookieParser = require("cookie-parser");
 const route = require("./modules/users/users.routes");
 const adminroute = require("./modules/admin/admin.route");
 const matchroute = require("./modules/match/match.route");
+const voteRoute = require("./modules/vote/vote.route");
 const User = require("./modules/users/users.models");
 
 const nodemailer = require("nodemailer");
@@ -92,6 +93,7 @@ app.use((req, res, next) => {
 app.use("/api/users", route);
 app.use("/api/admin", adminroute);
 app.use("/api/match", matchroute);
+app.use("/api/vote", voteRoute)
 
 
 app.use("/api/support", support);

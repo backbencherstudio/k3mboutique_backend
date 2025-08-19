@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-// Custom Validator to check player count (15 players max for each team)
 const playerCountValidator = (players) => {
   return players.length <= 15;
 };
@@ -13,14 +12,22 @@ const MatchSchema = new Schema(
       players: {
         type: [
           {
-            player: { type: Schema.Types.ObjectId, ref: "Players", required: true },
-            isStarting: { type: Boolean, required: true }, 
-            paerent: { type: Schema.Types.ObjectId, ref: "User", required: true }, 
-            
+            player: {
+              type: Schema.Types.ObjectId,
+              ref: "Players",
+              required: true,
+            },
+            isStarting: { type: Boolean, required: true },
+            paerent: {
+              type: Schema.Types.ObjectId,
+              ref: "User",
+              required: true,
+            },
+            votes: { type: Number, default: 0 },
           },
         ],
         validate: {
-          validator: playerCountValidator, 
+          validator: playerCountValidator,
           message: "Team A cannot have more than 15 players.",
         },
       },
@@ -30,32 +37,31 @@ const MatchSchema = new Schema(
     },
     teamB: {
       name: { type: String, required: true },
-      // players: {
-      //   type: [
-      //     {
-      //       player: { type: Schema.Types.ObjectId, ref: "Players", required: true },
-      //       isStarting: { type: Boolean, required: true },  
-      //     },
-      //   ],
-      //   validate: {
-      //     validator: playerCountValidator, 
-      //     message: "Team B cannot have more than 15 players.",
-      //   },
-      // },
-      // goalScorers: [{ type: Schema.Types.ObjectId, ref: "Players" }],
-      // goalAssists: [{ type: Schema.Types.ObjectId, ref: "Players" }],
       totalGoals: { type: Number, default: 0 },
     },
     date: { type: Date, required: true },
     start_time: { type: String, required: true },
     end_time: { type: String, required: true },
     stadium: { type: String, required: true },
-    manager: { type: String, required: true },
+    // manager: { type: String, required: true },
+    manager: {
+      type: {
+        name: { type: String, required: true },
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+      },
+      required: true,
+    },
     matchStatus: {
       type: String,
-      enum: ["Published", "Scheduled"],
+      enum: ["Published", "Scheduled", "Completed"],
       default: "Scheduled",
     },
+    manOfTheMatch: { type: Schema.Types.ObjectId, ref: "Players" },
+    votingOpen: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
