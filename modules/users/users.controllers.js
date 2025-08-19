@@ -5,6 +5,7 @@ const { sign, verify } = require("jsonwebtoken");
 const User = require("./users.models");
 const Players = require("../players/players.model");
 const Otp = require("./otp.model");
+const mongoose = require('mongoose');
 require("dotenv").config();
 
 const fs = require("fs");
@@ -107,80 +108,171 @@ const registerUser = async (req, res) => {
         .json({ message: "Email is already registered. Please log in." });
     }
 
-    if (!user) {
-      if (role === "parent") {
-        const parentaccess = await Players.findOne({
-          parent_email: email,
-        });
+    // if (!user) {
+    //   if (role === "parent") {
+    //     const parentaccess = await Players.findOne({
+    //       parent_email: email,
+    //     });
 
-        // console.log(parentaccess);
-        // console.log(email);
-        if (!parentaccess) {
-          return res
-            .status(403)
-            .json({ message: "You do not have permission to register." });
+    //     // console.log(parentaccess);
+    //     // console.log(email);
+    //     if (!parentaccess) {
+    //       return res
+    //         .status(403)
+    //         .json({ message: "You do not have permission to register." });
+    //     }
+
+    //     const newUser = new User({
+    //       name,
+    //       email,
+    //       password: hashedPassword,
+    //       role,
+    //       country: null,
+    //       phone,
+    //     });
+
+    //     await newUser.save();
+    //     const players = await Players.find({
+    //       parent_email: email,
+    //     });
+
+    //     let childlist = [];
+
+    //     //console.log(players);
+    //     for (const player of players) {
+    //       player.parent_id = newUser.id;
+    //       player.active = true;
+    //       await player.save();
+    //       childlist.push(player._id);
+    //     }
+
+    //      newUser.childlist = childlist;
+    //      await newUser.save();
+
+    //     return res.status(200).json({
+    //       message: "Successfully Account Regitered",
+    //     });
+    //   }
+
+    //   let country = "Unknown";
+    //   try {
+    //     const response = await fetch("http://get.geojs.io/v1/ip/geo.json");
+    //     if (response.ok) {
+    //       const data = await response.json();
+    //       country = data.country || "Unknown";
+    //     }
+    //   } catch (error) {
+    //     console.error("Error fetching IP-based location:", error.message);
+    //   }
+
+    //   const newUser = new User({
+    //     name,
+    //     email,
+    //     password: hashedPassword,
+    //     role,
+    //     country,
+    //     phone,
+    //   });
+
+    //   await newUser.save();
+
+    //   // const otp = generateOTP();
+    //   // const expiresAt = new Date(Date.now() + 1000 * 60 * 5);
+    //   // await Otp.create({ userId: newUser._id, email, otp, type: "email_verification", expiresAt })
+
+    //   // if (newUser.name) {
+    //   //   await sendForgotPasswordOTP(newUser.name, newUser.email, otp);
+    //   // }
+
+    //   return res.status(200).json({
+    //     message: "Successfully Account Regitered",
+    //   });
+    // }
+
+    if (role === "parent") {
+      try {
+        
+        if (!email || !name || !phone) {
+          return res.status(400).json({ message: "Missing required fields" });
         }
 
+        
+        const parentPlayers = await Players.find({ parent_email: email });
+
+        if (!parentPlayers || parentPlayers.length === 0) {
+          return res.status(403).json({
+            message: "No associated player accounts found. Permission denied.",
+          });
+        }
+
+       
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+          return res.status(409).json({
+            message: "User with this email already exists",
+          });
+        }
+
+        
         const newUser = new User({
           name,
           email,
           password: hashedPassword,
           role,
-          country: null,
+          country: null, 
           phone,
+          childlist: [], 
         });
 
-        await newUser.save();
-        const players = await Players.find({
-          parent_email: email,
+        // Update player records and build childlist
+        const childlist = [];
+        const updateOperations = parentPlayers.map((player) => {
+          childlist.push(player._id);
+          return {
+            updateOne: {
+              filter: { _id: player._id },
+              update: {
+                $set: {
+                  parent_id: newUser._id,
+                  active: true,
+                  updatedAt: new Date(),
+                },
+              },
+            },
+          };
         });
 
-       
-        console.log(players);
-        for (const player of players) {
-          player.parent_id = newUser.id;
-          player.active = true;
-          await player.save();
-        }
+        // Execute all operations in a transaction for atomicity
+        const session = await mongoose.startSession();
 
-        return res.status(200).json({
-          message: "Successfully Account Regitered",
+        await session.withTransaction(async () => {
+          await newUser.save({ session });
+
+          // Bulk update players for better performance
+          if (updateOperations.length > 0) {
+            await Players.bulkWrite(updateOperations, { session });
+          }
+
+          newUser.childlist = childlist;
+          await newUser.save({ session });
         });
-      }
+        session.endSession();
 
-      let country = "Unknown";
-      try {
-        const response = await fetch("http://get.geojs.io/v1/ip/geo.json");
-        if (response.ok) {
-          const data = await response.json();
-          country = data.country || "Unknown";
-        }
+        //const userResponse = _.omit(newUser.toObject(), ["password", "__v"]);
+
+        return res.status(201).json({
+          message: "Parent account successfully registered",
+          user: userResponse,
+          childCount: childlist.length,
+        });
       } catch (error) {
-        console.error("Error fetching IP-based location:", error.message);
+        console.error("Parent registration error:", error);
+        return res.status(500).json({
+          message: "An error occurred during registration",
+          error:
+            process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
       }
-
-      const newUser = new User({
-        name,
-        email,
-        password: hashedPassword,
-        role,
-        country,
-        phone,
-      });
-
-      await newUser.save();
-
-      // const otp = generateOTP();
-      // const expiresAt = new Date(Date.now() + 1000 * 60 * 5);
-      // await Otp.create({ userId: newUser._id, email, otp, type: "email_verification", expiresAt })
-
-      // if (newUser.name) {
-      //   await sendForgotPasswordOTP(newUser.name, newUser.email, otp);
-      // }
-
-      return res.status(200).json({
-        message: "Successfully Account Regitered",
-      });
     }
   } catch (error) {
     console.error(error);

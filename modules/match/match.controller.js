@@ -70,17 +70,28 @@ exports.getAllMatch = async (req, res) => {
 
 exports.getParentAllMatches = async (req, res) => {
   const parentId = req.params.parentId;
+  const category = req.query.category; // 'upcoming' or 'history'
+  const currentDate = new Date();
 
   try {
-    // Find matches where any player has the given parentId
-    const matches = await Match.find({
+    let query = {
       $or: [
         { "teamA.players.paerent": parentId },
         { "teamB.players.paerent": parentId }
       ]
-    });
+    };
 
-    // Return the matches
+    // Add date filter based on category
+    if (category === 'upcoming') {
+      query.date = { $gte: currentDate };
+    } else if (category === 'history') {
+      query.date = { $lt: currentDate };
+    }
+    // If no category specified, return all matches (both past and future)
+
+    const matches = await Match.find(query)
+      .sort({ date: category === 'upcoming' ? 1 : -1 }); 
+
     res.status(200).json(matches);
   } catch (error) {
     res.status(500).json({ message: "Error fetching matches", error });
