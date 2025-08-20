@@ -144,7 +144,28 @@ exports.createMatch = async (req, res) => {
     });
 
     await match.save();
-    res.status(201).json({
+
+    // Create notification for the manager
+    const notification = new Notification({
+      userId: manager.userId,
+      message: `You have been assigned as manager for the match: ${match?.teamAName} vs ${match?.teamBName} on ${new Date(match?.date).toLocaleDateString()}`,
+      type: 'match_created',
+      matchId: match._id
+    });
+
+    await notification.save();
+
+    // Send real-time notification to the manager
+    const io = req.app.get('io');
+    io.to(`user-${manager.userId}`).emit('new-notification', {
+      message: notification.message,
+      matchId: match._id,
+      notificationId: notification._id,
+      timestamp: new Date()
+    });
+
+
+    return res.status(201).json({
       message: "Match created successfully",
       match,
     });
