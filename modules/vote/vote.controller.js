@@ -1,7 +1,7 @@
 const Match = require("../match/match.model");
 const User = require("../users/users.models");
 
-// Start voting for a match
+
 exports.startVoting = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -11,7 +11,7 @@ exports.startVoting = async (req, res) => {
     }
 
     const userIdString = match?.manager?.userId?.toString();
-    //console.log(userIdString)
+    
     if (user.role === "admin" || userIdString === req.userId) {
       match = await Match.findByIdAndUpdate(
         req.params.matchId,
@@ -29,7 +29,10 @@ exports.startVoting = async (req, res) => {
   }
 };
 
-// Submit a vote
+
+
+
+
 exports.submitVote = async (req, res) => {
   try {
     const { matchId, playerId, parentId } = req.body;
@@ -47,12 +50,8 @@ exports.submitVote = async (req, res) => {
     }
 
     const isParentValid = match.teamA.players.some((p) => {
-      console.log("paerent value:", p.paerent?.toString());
-      console.log("Target parentId:", parentId);
       return p.paerent?.toString() === parentId;
     });
-
-    console.log("Final isParentValid:", isParentValid);
 
     if (!isParentValid) {
       return res
@@ -90,6 +89,10 @@ exports.submitVote = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
 
 exports.endVoting = async (req, res) => {
   try {
@@ -132,7 +135,10 @@ exports.endVoting = async (req, res) => {
   }
 };
 
-// Get voting results
+
+
+
+
 exports.getVotingResults = async (req, res) => {
   try {
     const match = await Match.findById(req.params.matchId)

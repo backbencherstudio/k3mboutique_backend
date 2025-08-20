@@ -12,7 +12,7 @@ router.put("/:matchId/start-voting", verifyUser, startVoting);
 
 router.post("/vote", submitVote);
 
-router.put("/:matchId/end-voting", endVoting);
+router.put("/:matchId/end-voting",verifyUser, endVoting);
 
 router.get("/:matchId/results", getVotingResults);
 

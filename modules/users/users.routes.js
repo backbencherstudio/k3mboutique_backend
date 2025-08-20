@@ -13,6 +13,7 @@ const {
   varifyEmailWithOTP,
   userbalance,
   myReferral,
+  updateEmail,
 
 } = require("./users.controllers");
 const { verifyUser } = require("../../middleware/verifyUser");
@@ -32,6 +33,7 @@ route.post("/request-forgot-password-otp", forgotPasswordOTPsend);
 route.patch("/reset-forgot-password", resetPasssword);
 
 route.put("/update-profile/:userId", verifyUser, upload.uploadProfileImage, editUserProfile);
+route.patch("/emailUpdate", verifyUser, updateEmail)
 
 
 
