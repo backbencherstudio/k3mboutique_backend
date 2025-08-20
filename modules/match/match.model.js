@@ -43,7 +43,6 @@ const MatchSchema = new Schema(
     start_time: { type: String, required: true },
     end_time: { type: String, required: true },
     stadium: { type: String, required: true },
-    // manager: { type: String, required: true },
     manager: {
       type: {
         name: { type: String, required: true },

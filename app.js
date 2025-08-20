@@ -5,27 +5,75 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
+const http = require("http");
+const socketIo = require("socket.io");
 const route = require("./modules/users/users.routes");
 const adminroute = require("./modules/admin/admin.route");
 const matchroute = require("./modules/match/match.route");
 const voteRoute = require("./modules/vote/vote.route");
 const User = require("./modules/users/users.models");
+const Notification = require("./modules/notification/notification.model"); // You'll need to create this
 
 const nodemailer = require("nodemailer");
 const support = require("./modules/supports/support.route");
 
-
-
 const crypto = require("crypto");
 const axios = require("axios");
 const mongoose = require("mongoose");
-const MongoStore = require('connect-mongo');
+const MongoStore = require("connect-mongo");
 
 const path = require("path");
 
-
-
 const app = express();
+const server = http.createServer(app);
+
+// Socket.IO setup
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://localhost:5174",
+      "http://10.0.2.2:*",
+      "https://c567-137-59-180-113.ngrok-free.app",
+      "https://symphonious-pastelito-e4abb5.netlify.app",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  }
+});
+
+// Store connected users
+const connectedUsers = new Map();
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  // Listen for user authentication
+  socket.on('authenticate', (userId) => {
+    connectedUsers.set(userId, socket.id);
+    console.log(`User ${userId} connected with socket ${socket.id}`);
+    
+    // Join a room for this user for targeted notifications
+    socket.join(`user-${userId}`);
+  });
+  
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    // Remove user from connected users
+    for (let [userId, socketId] of connectedUsers.entries()) {
+      if (socketId === socket.id) {
+        connectedUsers.delete(userId);
+        console.log(`User ${userId} disconnected`);
+        break;
+      }
+    }
+  });
+});
+
+// Make io accessible to routes
+app.set('io', io);
+
 app.use(
   cors({
     origin: [
@@ -34,10 +82,9 @@ app.use(
       "http://localhost:5174",
       "http://10.0.2.2:*",
       "https://c567-137-59-180-113.ngrok-free.app",
-      "https://symphonious-pastelito-e4abb5.netlify.app"
-
+      "https://symphonious-pastelito-e4abb5.netlify.app",
     ],
-    credentials: true, // Important for cookies
+    credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
@@ -46,7 +93,10 @@ app.use(
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", req.headers.origin);
   res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
   next();
 });
 
@@ -57,10 +107,6 @@ app.use(morgan("dev"));
 app.use(cookieParser());
 app.use(express.json());
 
-
-
-
-
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -68,19 +114,18 @@ app.use(
     saveUninitialized: false,
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI,
-      collectionName: 'sessions',
+      collectionName: "sessions",
     }),
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 3600000,
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
 );
 
-app.set('trust proxy', 1);
-
+app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
   if (req.path === "/webhook" || req.path === "/api/payments/webhook") {
@@ -93,14 +138,11 @@ app.use((req, res, next) => {
 app.use("/api/users", route);
 app.use("/api/admin", adminroute);
 app.use("/api/match", matchroute);
-app.use("/api/vote", voteRoute)
-
+app.use("/api/vote", voteRoute);
 
 app.use("/api/support", support);
 
-
 // optional----------------------
-
 
 app.get("/success", async (req, res) => {
   const sessionId = req.query.session_id;
@@ -126,18 +168,11 @@ app.get("/success", async (req, res) => {
   }
 });
 
-
-
-
-
-
-
 app.use((err, req, res, next) => {
   res.status(500).json({
     message: "500! Something broken",
   });
 });
 
-
-
-module.exports = app;
+// Export the server instead of app
+module.exports = server;
