@@ -4,18 +4,14 @@ const User = require("../users/users.models");
 // Start voting for a match
 exports.startVoting = async (req, res) => {
   try {
-
     const user = await User.findById(req.userId);
-     console.log(req.userId)
-     console.log(user)
     let match = await Match.findById(req.params.matchId);
     if (!match) {
       return res.status(404).json({ message: "Match not found" });
     }
 
-    
     const userIdString = match?.manager?.userId?.toString();
-    console.log(userIdString)
+    //console.log(userIdString)
     if (user.role === "admin" || userIdString === req.userId) {
       match = await Match.findByIdAndUpdate(
         req.params.matchId,
@@ -50,13 +46,13 @@ exports.submitVote = async (req, res) => {
         .json({ message: "Voting is not open for this match" });
     }
 
-const isParentValid = match.teamA.players.some((p) => {
-  console.log('paerent value:', p.paerent?.toString());
-  console.log('Target parentId:', parentId);
-  return p.paerent?.toString() === parentId;
-});
+    const isParentValid = match.teamA.players.some((p) => {
+      console.log("paerent value:", p.paerent?.toString());
+      console.log("Target parentId:", parentId);
+      return p.paerent?.toString() === parentId;
+    });
 
-console.log('Final isParentValid:', isParentValid);
+    console.log("Final isParentValid:", isParentValid);
 
     if (!isParentValid) {
       return res
@@ -104,8 +100,8 @@ exports.endVoting = async (req, res) => {
     if (!match) {
       return res.status(404).json({ message: "Match not found" });
     }
-     const userIdString = match?.manager?.userId?.toString();
-    if (user.role === "admin" || userIdString  === req.userId) {
+    const userIdString = match?.manager?.userId?.toString();
+    if (user.role === "admin" || userIdString === req.userId) {
       const allPlayers = [
         ...match.teamA.players.map((p) => ({
           player: p.player,
@@ -136,14 +132,11 @@ exports.endVoting = async (req, res) => {
   }
 };
 
-
-
 // Get voting results
 exports.getVotingResults = async (req, res) => {
   try {
     const match = await Match.findById(req.params.matchId)
       .populate("teamA.players.player", "name")
-      .populate("teamB.players.player", "name")
       .populate("manOfTheMatch", "name");
 
     if (!match) {

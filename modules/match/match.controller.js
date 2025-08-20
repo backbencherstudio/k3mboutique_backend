@@ -1,3 +1,4 @@
+const { Types } = require("mongoose");
 const Match = require("../match/match.model");
 
 exports.getOnematch = async (req, res) => {
@@ -19,21 +20,29 @@ exports.updatedMatch = async (req, res) => {
     if (!match) {
       return res.status(404).json({ message: "Match not found" });
     }
-    if (goalScorersA && goalScorersA.length > 0) {
-      const validGoalScorers = goalScorersA.filter((playerId) =>
-        match.teamA.players.some((p) => p.player.toString() === playerId)
-      );
-      match.teamA.goalScorers.push(...validGoalScorers);
+
+    const userIdString = match?.manager?.userId?.toString();
+    //console.log(userIdString)
+    if (user.role === "admin" || userIdString === req.userId) {
+      if (goalScorersA && goalScorersA.length > 0) {
+        const validGoalScorers = goalScorersA.filter((playerId) =>
+          match.teamA.players.some((p) => p.player.toString() === playerId)
+        );
+        match.teamA.goalScorers.push(...validGoalScorers);
+      }
+      if (goalAssistsA && goalAssistsA.length > 0) {
+        const validGoalAssists = goalAssistsA.filter((playerId) =>
+          match.teamA.players.some((p) => p.player.toString() === playerId)
+        );
+        match.teamA.goalAssists.push(...validGoalAssists);
+      }
+      match.teamA.totalGoals = match.teamA.goalScorers.length;
+      await match.save();
+      return res.status(200).json(match);
     }
-    if (goalAssistsA && goalAssistsA.length > 0) {
-      const validGoalAssists = goalAssistsA.filter((playerId) =>
-        match.teamA.players.some((p) => p.player.toString() === playerId)
-      );
-      match.teamA.goalAssists.push(...validGoalAssists);
-    }
-    match.teamA.totalGoals = match.teamA.goalScorers.length;
-    await match.save();
-    return res.json(match);
+    return res
+      .status(400)
+      .json({ message: "You can not access update this match" });
   } catch (err) {
     return res.status(500).json({ message: err });
   }
@@ -67,30 +76,35 @@ exports.getAllMatch = async (req, res) => {
   }
 };
 
-
 exports.getParentAllMatches = async (req, res) => {
   const parentId = req.params.parentId;
   const category = req.query.category; // 'upcoming' or 'history'
   const currentDate = new Date();
 
+  if (!Types.ObjectId.isValid(parentId)) {
+    return res.status(400).json({ message: "Invalid parentId" });
+  }
+  const parentObjectId = new Types.ObjectId(parentId);
   try {
     let query = {
       $or: [
         { "teamA.players.paerent": parentId },
-        { "teamB.players.paerent": parentId }
-      ]
+        { "manager.userId": parentObjectId },
+        // { "teamB.players.paerent": parentId }
+      ],
     };
 
     // Add date filter based on category
-    if (category === 'upcoming') {
+    if (category === "upcoming") {
       query.date = { $gte: currentDate };
-    } else if (category === 'history') {
+    } else if (category === "history") {
       query.date = { $lt: currentDate };
     }
     // If no category specified, return all matches (both past and future)
 
-    const matches = await Match.find(query)
-      .sort({ date: category === 'upcoming' ? 1 : -1 }); 
+    const matches = await Match.find(query).sort({
+      date: category === "upcoming" ? 1 : -1,
+    });
 
     res.status(200).json(matches);
   } catch (error) {
